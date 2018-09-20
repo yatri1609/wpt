@@ -90,29 +90,43 @@ function test_tone_change_events(testFunc, toneChanges, desc) {
           'Expect tone change event object to be an RTCDTMFToneChangeEvent');
 
         const { tone } = ev;
-        assert_equals(typeof tone, 'string',
-          'Expect event.tone to be the tone string');
 
         assert_greater_than(toneChanges.length, 0,
           'More tonechange event is fired than expected');
 
-        const [
-          expectedTone, expectedToneBuffer, expectedDuration
-        ] = toneChanges.shift();
+        let expectedTone, expectedToneBuffer, expectedDuration;
+        while (true) {
+          [
+            expectedTone, expectedToneBuffer, expectedDuration
+          ] = toneChanges.shift();
+
+          // Special case: If expected_duration is -1, this is an event
+          // that may or may not occur, but if it occurs, it has to have
+          // the indicated properties.
+          if (expectedDuration == -1) {
+            if (tone !== expectedTone) {
+              continue;
+            }
+          }
+          break;
+        }
+        assert_equals(typeof tone, 'string',
+          'Expect event.tone to be the tone string');
 
         assert_equals(tone, expectedTone,
           `Expect current event.tone to be ${expectedTone}`);
 
         assert_equals(dtmfSender.toneBuffer, expectedToneBuffer,
           `Expect dtmfSender.toneBuffer to be updated to ${expectedToneBuffer}`);
+        if (expectedDuration != -1) {
+          const now = Date.now();
+          const duration = now - lastEventTime;
 
-        const now = Date.now();
-        const duration = now - lastEventTime;
+          assert_approx_equals(duration, expectedDuration, 400,
+                               `Expect tonechange event for "${tone}" to be fired approximately after ${expectedDuration} milliseconds`);
+          lastEventTime = now;
+        }
 
-        assert_approx_equals(duration, expectedDuration, 400,
-          `Expect tonechange event for "${tone}" to be fired approximately after ${expectedDuration} milliseconds`);
-
-        lastEventTime = now;
 
         if(toneChanges.length === 0) {
           // Wait for same duration as last expected duration + 100ms

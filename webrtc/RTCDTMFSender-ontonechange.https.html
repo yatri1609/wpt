@@ -165,19 +165,23 @@
         // is changed after the tonechange event listener
         // by test_tone_change_events is called.
         // This is to correctly test the expected toneBuffer.
+          // This is inherently racy, because due to possible delays
+          // in the "B" event, the "C" event may or may not
+          // have been fired before the insertDTMF is executed.
         t.step_timeout(() => {
           dtmfSender.insertDTMF('12', 100, 70);
-        }, 10);
+        }, 0);
       }
     });
 
-    dtmfSender.insertDTMF('ABC', 100, 70);
+    dtmfSender.insertDTMF('ABCD', 100, 70);
   }, [
-    ['A', 'BC', 0],
-    ['B', 'C', 170],
-    ['1', '2', 170],
-    ['2', '', 170],
-    ['', '', 170]
+      ['A', 'BCD', 0],
+      ['B', 'CD', 170],
+      ['C', 'D', -1],  // This event may or may not occur.
+      ['1', '2', 170],
+      ['2', '', 170],
+      ['', '', 170]
   ], 'Calling insertDTMF() in the middle of tonechange events should cause future tonechanges to be updated to new tones');
 
 
